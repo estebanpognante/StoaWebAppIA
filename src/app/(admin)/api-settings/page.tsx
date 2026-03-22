@@ -9,6 +9,11 @@ import { getDocument, updateInCollection } from '@/lib/db';
 import { Key, RotateCcw, Copy, ExternalLink, Check } from 'lucide-react';
 import styles from './ApiSettings.module.css';
 
+interface TenantData {
+  publicApiKeyPrefix?: string;
+  publicApiEnabled?: boolean;
+}
+
 export default function ApiSettingsPage() {
   const { user } = useAuth();
   const [apiKey, setApiKey] = useState('...');
@@ -24,7 +29,7 @@ export default function ApiSettingsPage() {
 
   const loadSettings = async () => {
     try {
-      const doc = await getDocument('tenants', user!.tenantID);
+      const doc = await getDocument<TenantData>('tenants', user!.tenantID);
       if (doc) {
         setApiKey(doc.publicApiKeyPrefix || 'Genera una llave nueva para empezar');
         setApiEnabled(doc.publicApiEnabled || false);

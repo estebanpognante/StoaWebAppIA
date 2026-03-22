@@ -26,11 +26,11 @@ export const getCollection = async (collectionName: string, tenantId?: string) =
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 };
 
-export const getDocument = async (collectionName: string, docId: string) => {
+export const getDocument = async <T = any>(collectionName: string, docId: string): Promise<(T & { id: string }) | null> => {
   const docRef = doc(db, collectionName, docId);
   const snapshot = await getDoc(docRef);
   if (snapshot.exists()) {
-    return { id: snapshot.id, ...snapshot.data() };
+    return { id: snapshot.id, ...snapshot.data() } as T & { id: string };
   }
   return null;
 };
