@@ -224,7 +224,7 @@ export default function ProfessionalsPage() {
               <TableCell className={styles.fontWeightMedium}>{p.name}</TableCell>
               <TableCell>{p.role}</TableCell>
               <TableCell>{p.email}</TableCell>
-              <TableCell maxWidth="250px">
+              <TableCell style={{ maxWidth: '250px' }}>
                  <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)'}}>
                    {getAssignedNames(p.services)}
                  </span>

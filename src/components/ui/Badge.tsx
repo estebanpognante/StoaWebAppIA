@@ -1,15 +1,13 @@
 import React from 'react';
 import styles from './Badge.module.css';
 
-interface BadgeProps {
-  children: React.ReactNode;
+interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
   variant?: 'default' | 'success' | 'warning' | 'error' | 'outline';
-  className?: string;
 }
 
-export function Badge({ children, variant = 'default', className = '' }: BadgeProps) {
+export function Badge({ children, variant = 'default', className = '', ...props }: BadgeProps) {
   return (
-    <span className={`${styles.badge} ${styles[variant]} ${className}`}>
+    <span className={`${styles.badge} ${styles[variant]} ${className}`} {...props}>
       {children}
     </span>
   );

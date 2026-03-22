@@ -50,7 +50,7 @@ export async function GET(req: Request) {
       .where('isActive', '==', true)
       .get(); 
 
-    const allProfs = profsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const allProfs = profsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
     const assignedProfs = allProfs.filter(p => {
         if (!p.services) return false;
         return p.services.includes(serviceKey) || p.services.includes(serviceId);

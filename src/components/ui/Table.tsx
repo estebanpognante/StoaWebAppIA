@@ -1,44 +1,44 @@
 import React from 'react';
 import styles from './Table.module.css';
 
-interface TableProps {
+interface TableProps extends React.TableHTMLAttributes<HTMLTableElement> {
   children: React.ReactNode;
-  className?: string;
 }
 
-export function Table({ children, className = '' }: TableProps) {
+export function Table({ children, className = '', ...props }: TableProps) {
   return (
     <div className={styles.container}>
-      <table className={`${styles.table} ${className}`}>
+      <table className={`${styles.table} ${className}`} {...props}>
         {children}
       </table>
     </div>
   );
 }
 
-export function TableHeader({ children }: { children: React.ReactNode }) {
-  return <thead className={styles.header}>{children}</thead>;
+export function TableHeader({ children, className = '', ...props }: React.HTMLAttributes<HTMLTableSectionElement>) {
+  return <thead className={className ? `${styles.header} ${className}` : styles.header} {...props}>{children}</thead>;
 }
 
-export function TableBody({ children }: { children: React.ReactNode }) {
-  return <tbody>{children}</tbody>;
+export function TableBody({ children, className = '', ...props }: React.HTMLAttributes<HTMLTableSectionElement>) {
+  return <tbody className={className} {...props}>{children}</tbody>;
 }
 
-export function TableRow({ children, className = '', onClick }: { children: React.ReactNode; className?: string; onClick?: () => void }) {
+export function TableRow({ children, className = '', onClick, ...props }: React.HTMLAttributes<HTMLTableRowElement>) {
   return (
     <tr 
       className={`${styles.row} ${onClick ? styles.clickable : ''} ${className}`}
       onClick={onClick}
+      {...props}
     >
       {children}
     </tr>
   );
 }
 
-export function TableHead({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <th className={`${styles.th} ${className}`}>{children}</th>;
+export function TableHead({ children, className = '', ...props }: React.ThHTMLAttributes<HTMLTableCellElement>) {
+  return <th className={`${styles.th} ${className}`} {...props}>{children}</th>;
 }
 
-export function TableCell({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <td className={`${styles.td} ${className}`}>{children}</td>;
+export function TableCell({ children, className = '', ...props }: React.TdHTMLAttributes<HTMLTableCellElement>) {
+  return <td className={`${styles.td} ${className}`} {...props}>{children}</td>;
 }

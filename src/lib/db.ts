@@ -14,7 +14,7 @@ import {
 
 // In a real application, you'd add stronger types and error handling
 
-export const getCollection = async (collectionName: string, tenantId?: string) => {
+export const getCollection = async <T = any>(collectionName: string, tenantId?: string): Promise<(T & { id: string })[]> => {
   const collRef = collection(db, collectionName);
   let q = query(collRef);
   
@@ -23,7 +23,7 @@ export const getCollection = async (collectionName: string, tenantId?: string) =
   }
   
   const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as T & { id: string });
 };
 
 export const getDocument = async <T = any>(collectionName: string, docId: string): Promise<(T & { id: string }) | null> => {
