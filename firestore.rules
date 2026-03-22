@@ -1,0 +1,88 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Función para validar si el usuario está logueado
+    function isAuth() {
+      return request.auth != null;
+    }
+    
+    // Función para verificar si es un Super Admin global
+    function isSuperAdmin() {
+      return isAuth() && request.auth.token.role == 'super_admin';
+    }
+    
+    // Función para verificar si es administrador de SU TENANT
+    function isTenantAdmin(tenantID) {
+      return isAuth() && request.auth.token.role == 'tenant_admin' && request.auth.token.tenantID == tenantID;
+    }
+    
+    // Función para verificar si pertenece a la misma empresa (end_user o admin)
+    function belongsToTenant(tenantID) {
+      return isAuth() && request.auth.token.tenantID == tenantID;
+    }
+
+    // Reglas para Colección "tenants"
+    match /tenants/{tenantId} {
+      allow read: if isSuperAdmin() || belongsToTenant(tenantId);
+      allow write: if isSuperAdmin() || isTenantAdmin(tenantId);
+    }
+
+    // Reglas para Colección "tenantUsers"
+    match /tenantUsers/{userId} {
+      allow read: if isSuperAdmin() || 
+                     (isAuth() && request.auth.token.role == 'tenant_admin' && resource.data.tenantID == request.auth.token.tenantID) || 
+                     request.auth.uid == userId;
+      allow write: if isSuperAdmin() || request.auth.uid == userId;
+    }
+
+    // ----------------------------------------------------
+    // HELPER FUNCTIONS (Evitan errores al eliminar o leer datos viejos)
+    // ----------------------------------------------------
+    function canReadData() {
+      return isSuperAdmin() || belongsToTenant(resource.data.tenantID) || resource.data.tenantID == null;
+    }
+    function canWriteData() {
+      return isSuperAdmin() || isTenantAdmin(request.resource.data.tenantID);
+    }
+    function canDeleteData() {
+      return isSuperAdmin() || isTenantAdmin(resource.data.tenantID) || resource.data.tenantID == null;
+    }
+
+    // ----------------------------------------------------
+    // CATÁLOGO: Productos y Servicios (y sus diccionarios)
+    // ----------------------------------------------------
+    match /products/{docId} { allow read: if canReadData(); allow create, update: if canWriteData(); allow delete: if canDeleteData(); }
+    match /productCategories/{docId} { allow read: if canReadData(); allow create, update: if canWriteData(); allow delete: if canDeleteData(); }
+    match /productSizes/{docId} { allow read: if canReadData(); allow create, update: if canWriteData(); allow delete: if canDeleteData(); }
+    
+    match /services/{docId} { allow read: if canReadData(); allow create, update: if canWriteData(); allow delete: if canDeleteData(); }
+    match /serviceCategories/{docId} { allow read: if canReadData(); allow create, update: if canWriteData(); allow delete: if canDeleteData(); }
+    match /serviceAttributes/{docId} { allow read: if canReadData(); allow create, update: if canWriteData(); allow delete: if canDeleteData(); }
+    
+    // ----------------------------------------------------
+    // EQUIPO
+    // ----------------------------------------------------
+    match /professionals/{docId} { allow read: if canReadData(); allow create, update: if canWriteData(); allow delete: if canDeleteData(); }
+
+    // ----------------------------------------------------
+    // NUEVO MÓDULO: Turnos y Calendario
+    // ----------------------------------------------------
+    match /appointments/{docId} { allow read: if canReadData(); allow create, update: if canWriteData(); allow delete: if canDeleteData(); }
+    match /blockedTimes/{docId} { allow read: if canReadData(); allow create, update: if canWriteData(); allow delete: if canDeleteData(); }
+
+    // ----------------------------------------------------
+    // CACHÉS / SISTEMA CERRADO
+    // ----------------------------------------------------
+    match /publicCatalogCache/{tenantId} {
+      allow read: if isSuperAdmin() || belongsToTenant(tenantId);
+      allow write: if false; 
+    }
+
+    // Regla de caída por defecto (seguridad estricta)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

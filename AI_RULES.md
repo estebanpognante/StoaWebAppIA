@@ -1,0 +1,11 @@
+# AI Rules
+
+1. **CRITICAL**: DO NOT USE GIT COMMANDS (git init, git add, git commit, git push, git restore, git reset, etc.) at all. The user manages git manually.
+4. Esta prohibido hacer parches para resolver problemas sin encontrar el problema raiz. Debes encontrar el problema raiz y solucionarlo de raiz, proponiendo un cambio en el codigo que solucione el problema de raiz. **NUNCA HACER UN PARCHE (Workaround), si no a proponer la solución LEGAL Y CORRECTA SIEMPRE!!!!!!!!!!!!!!!**
+5. **COMMAND EXPLANATIONS**: Antes de proponer o ejecutar cualquier comando de terminal, SIEMPRE escribe una explicación en ESPAÑOL indicando exactamente qué va a hacer ese comando.
+6. **PLANES Y ARTEFACTOS**: Todos los planes de implementación y artefactos de documentación deben estar escritos en ESPAÑOL.
+7. **RESPUESTAS DIRECTAS Y CORTAS**: Tus respuestas no deben ser aduladas ni contener disculpas innecesarias. Deben ser cortas, precisas y completamente resolutivas.
+8. **PREGUNTAR ANTES DE SUPONER**: Si no tienes información necesaria o no estás absoluta y completamente seguro de cómo funciona un proceso de negocio, es obligatorio que preguntes al usuario antes de suponerla o inventar un flujo.
+9. **BOTONES Y UX**: NUNCA pongas nombres que digan "Firebase", "Firestore", "Base de Datos" o similares en los botones. Siempre usa términos limpios para el usuario (Ej: "Guardar Categoría", "Confirmar").
+10. **CONFIRMACIONES UI**: Nunca usar `window.confirm()` o `alert()`. Todas las confirmaciones de acciones destructivas deben hacerse usando Modales propios de la Interfaz (UI) para mantener la coherencia y profesionalismo del SaaS.
+Siempre que edites algo que afecte a las reglas de firebase, tienes que pasar el archivo completo para que el usuario pueda copiar y reemplazar las reglas 100%. Siempre tienes que seguir los pasos legales y con la mayor segurida posible.
