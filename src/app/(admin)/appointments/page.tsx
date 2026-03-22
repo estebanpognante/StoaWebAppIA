@@ -529,7 +529,7 @@ export default function AppointmentsPage() {
 
           <Input label="Motivo (Opcional, visible para ti)" placeholder="Ej: Feriado, Vacaciones, Licencia Médica..." value={blockFormData.reason} onChange={e => setBlockFormData({...blockFormData, reason: e.target.value})} />
 
-          <Button type="submit" fullWidth style={{ marginTop: '0.5rem' }}>Confirmar Bloqueo de Agenda</Button>
+          <Button type="submit" style={{ width: '100%', marginTop: '0.5rem' }}>Confirmar Bloqueo de Agenda</Button>
         </form>
       </Modal>
 
