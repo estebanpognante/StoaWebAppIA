@@ -105,8 +105,8 @@ console.log(data);
             </div>
 
             <div className={styles.actions} style={{ marginTop: '1rem' }}>
-              <Button onClick={rotateKey} variant="outline" isLoading={isRotating} icon={<RotateCcw size={16} />}>
-                Generar / Rotar API Key
+              <Button onClick={rotateKey} variant="outline" isLoading={isRotating} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'center' }}>
+                <RotateCcw size={16} /> Generar / Rotar API Key
               </Button>
             </div>
             <div className={styles.statusBox} style={{ marginTop: '1rem' }}>
