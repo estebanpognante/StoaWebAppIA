@@ -6,7 +6,9 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
-import { Plus, Search, Edit2, Trash2, Settings } from 'lucide-react';
+import { ImportExcelModal } from '@/components/ImportExcelModal';
+import { DictionaryManager } from '@/components/DictionaryManager';
+import { Plus, Search, Edit2, Trash2, Settings, Upload } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { getCollection, insertIntoCollection, updateInCollection, deleteFromCollection } from '@/lib/db';
 import styles from '../products/Products.module.css';
@@ -15,26 +17,26 @@ export default function ServicesPage() {
   const { user } = useAuth();
   const [services, setServices] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
-  const [attributes, setAttributes] = useState<any[]>([]);
+  const [attributes, setAttributes] = useState<any[]>([]); // For modalities
+  const [dbAttributes, setDbAttributes] = useState<any[]>([]); // For flexible attributes
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isDictManagerOpen, setIsDictManagerOpen] = useState(false);
+  const [isDictionaryOpen, setIsDictionaryOpen] = useState(false);
+  const [dictionaryTab, setDictionaryTab] = useState<'categories' | 'attributes'>('categories');
+  const [isImportOpen, setIsImportOpen] = useState(false);
   const [editingService, setEditingService] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [newAttrKey, setNewAttrKey] = useState('');
+  const [newAttrValue, setNewAttrValue] = useState('');
 
   const [confirmModal, setConfirmModal] = useState<{isOpen: boolean, title: string, message: string, onConfirm: () => void}>({isOpen: false, title: '', message: '', onConfirm: () => {}});
-
-  // Custom Prompt Modal state
-  const [promptModal, setPromptModal] = useState<{isOpen: boolean, type: 'category'|'subcategory'|'attribute'|null, title: string, label: string}>({
-    isOpen: false, type: null, title: '', label: ''
-  });
-  const [promptValue, setPromptValue] = useState('');
 
   // Form states
   interface ServiceVariant { id: string; name: string; description: string; attributeId: string; price: number; duration: number; }
   const [formData, setFormData] = useState({ 
-    name: '', description: '', categoryId: '', subcategoryId: '', price: 0, duration: 60, status: 'active',
-    variants: [] as ServiceVariant[]
+    name: '', brand: '', description: '', categoryId: '', subcategoryId: '', price: 0, duration: 60, status: 'active',
+    variants: [] as ServiceVariant[],
+    attributes: {} as Record<string, string>
   });
 
   useEffect(() => {
@@ -46,14 +48,16 @@ export default function ServicesPage() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const [srvs, cats, attrs] = await Promise.all([
+      const [srvs, cats, attrs, flexAttrs] = await Promise.all([
         getCollection('services', user!.tenantID),
         getCollection('serviceCategories', user!.tenantID),
-        getCollection('serviceAttributes', user!.tenantID)
+        getCollection('serviceAttributes', user!.tenantID),
+        getCollection('tenantAttributes', user!.tenantID)
       ]);
       setServices(srvs);
       setCategories(cats);
       setAttributes(attrs);
+      setDbAttributes(flexAttrs.filter((a: any) => a.entityType === 'service'));
     } catch (e) {
       console.error(e);
     }
@@ -64,21 +68,30 @@ export default function ServicesPage() {
     setEditingService(service);
     setFormData({
       name: service.name || '',
+      brand: service.brand || '',
       description: service.description || '',
       categoryId: service.categoryId || '',
       subcategoryId: service.subcategoryId || '',
       price: service.price || service.priceFrom || 0,
       duration: service.duration || 60,
       status: service.status || 'active',
-      variants: service.variants || []
+      variants: service.variants || [],
+      attributes: service.attributes || {}
     });
     setIsModalOpen(true);
   };
 
   const handleNew = () => {
     setEditingService(null);
-    setFormData({ name: '', description: '', categoryId: '', subcategoryId: '', price: 0, duration: 60, status: 'active', variants: [] });
+    setFormData({ name: '', brand: '', description: '', categoryId: '', subcategoryId: '', price: 0, duration: 60, status: 'active', variants: [], attributes: {} });
+    setNewAttrKey('');
+    setNewAttrValue('');
     setIsModalOpen(true);
+  };
+
+  const openDictionary = (tab: 'categories' | 'attributes') => {
+    setDictionaryTab(tab);
+    setIsDictionaryOpen(true);
   };
 
   const handleSave = async () => {
@@ -96,6 +109,37 @@ export default function ServicesPage() {
     }
   };
 
+  const handleImportExcel = async (rows: any[]) => {
+    if (!user?.tenantID) return;
+    try {
+      setIsLoading(true);
+      setIsImportOpen(false);
+
+      const newAttrNames = new Set<string>();
+      rows.forEach(r => {
+         if (r.attributes) {
+            Object.keys(r.attributes).forEach(k => {
+               if (!dbAttributes.find((a: any) => a.name.toLowerCase() === k.toLowerCase())) {
+                   newAttrNames.add(k);
+               }
+            });
+         }
+      });
+
+      const attrPromises = Array.from(newAttrNames).map(name => 
+          insertIntoCollection('tenantAttributes', { name, type: 'text', entityType: 'service', tenantID: user.tenantID })
+      );
+      await Promise.all(attrPromises);
+
+      const batchPromises = rows.map(r => insertIntoCollection('services', { ...r, tenantID: user.tenantID, status: 'active', variants: [] }));
+      await Promise.all(batchPromises);
+      fetchData();
+    } catch(e:any) {
+      alert("Error importando servicios: " + e.message);
+      setIsLoading(false);
+    }
+  };
+
   const requestDelete = (id: string) => {
     setConfirmModal({
       isOpen: true, title: 'Eliminar Servicio', message: '¿Seguro quieres eliminar este servicio de forma permanente?',
@@ -105,16 +149,6 @@ export default function ServicesPage() {
     });
   };
 
-  const requestDeleteDict = (collectionName: string, id: string) => {
-    setConfirmModal({
-      isOpen: true, title: 'Eliminar Entrada', message: '¿Seguro quieres eliminar esta entrada del diccionario? Si está en uso, podría verse un fallo en el modelo.',
-      onConfirm: async () => {
-         try { await deleteFromCollection(collectionName, id); fetchData(); } catch(e:any){alert(e.message);}
-      }
-    });
-  };
-
-  // Advanced Variants Logic
   const addVariant = () => {
     setFormData({
       ...formData, 
@@ -131,37 +165,6 @@ export default function ServicesPage() {
     setFormData({...formData, variants: formData.variants.filter(v => v.id !== id)});
   };
 
-  // Custom Prompt Logic
-  const openPrompt = (type: 'category'|'subcategory'|'attribute') => {
-    setPromptValue('');
-    if (type === 'category') setPromptModal({ isOpen: true, type, title: 'Nueva Categoría', label: 'Nombre de la nueva categoría:' });
-    else if (type === 'subcategory') setPromptModal({ isOpen: true, type, title: 'Nueva Subcategoría', label: 'Nombre de la nueva subcategoría:' });
-    else setPromptModal({ isOpen: true, type, title: 'Nuevo Atributo/Modalidad', label: 'Nombre (Ej: Online, Presencial, Suscripción):' });
-  };
-
-  const handlePromptSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const name = promptValue.trim();
-    if (!name) return;
-    try {
-      if (promptModal.type === 'category') {
-        const newCat = await insertIntoCollection('serviceCategories', { name, parentID: null, tenantID: user!.tenantID });
-        setCategories([...categories, newCat]);
-        setFormData({ ...formData, categoryId: newCat.id, subcategoryId: '' });
-      } else if (promptModal.type === 'subcategory') {
-        const newCat = await insertIntoCollection('serviceCategories', { name, parentID: formData.categoryId, tenantID: user!.tenantID });
-        setCategories([...categories, newCat]);
-        setFormData({ ...formData, subcategoryId: newCat.id });
-      } else if (promptModal.type === 'attribute') {
-        const newAttr = await insertIntoCollection('serviceAttributes', { name, tenantID: user!.tenantID });
-        setAttributes([...attributes, newAttr]);
-      }
-      setPromptModal({ isOpen: false, type: null, title: '', label: '' });
-    } catch (error: any) {
-      alert('Error en BD. Detalle: ' + error.message);
-    }
-  };
-
   const getCategoryName = (id: string) => categories.find(c => c.id === id)?.name || '---';
   const filtered = services.filter(s => s.name?.toLowerCase().includes(searchTerm.toLowerCase()));
   const mainCategories = categories.filter(c => !c.parentID);
@@ -175,9 +178,13 @@ export default function ServicesPage() {
           <p className={styles.subtitle}>Gestiona tus servicios y sus modalidades</p>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
-           <Button variant="outline" onClick={() => setIsDictManagerOpen(true)}>
+           <Button variant="outline" onClick={() => setIsImportOpen(true)}>
+             <Upload size={18} />
+             Importar Excel
+           </Button>
+           <Button variant="outline" onClick={() => openDictionary('categories')}>
              <Settings size={18} />
-             Categorías
+             Gestor de Catálogos
            </Button>
            <Button onClick={handleNew}>
              <Plus size={18} />
@@ -221,10 +228,18 @@ export default function ServicesPage() {
             rows.push(
               <TableRow key={s.id}>
                 <TableCell className={styles.fontWeightMedium}>
-                  <div style={{ color: hasVariants ? 'var(--text-secondary)' : 'inherit', display: 'flex', alignItems: 'center' }}>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--primary-color)', fontWeight: 700, textTransform: 'uppercase' }}>{s.brand || '---'}</div>
+                  <div style={{ color: hasVariants ? 'var(--text-secondary)' : 'inherit', display: 'flex', alignItems: 'center', marginTop: '2px' }}>
                     {s.name} {hasVariants && <Badge variant="outline" style={{marginLeft: '0.5rem', fontSize: '0.65rem'}}>Agrupador</Badge>}
                   </div>
-                  {s.description && <div style={{fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px', maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{s.description}</div>}
+                  {s.description && <div style={{fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '4px', maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{s.description}</div>}
+                  
+                  {s.attributes && Object.keys(s.attributes).length > 0 && (
+                     <div style={{ display: 'flex', gap: '0.2rem', marginTop: '0.6rem', flexWrap: 'wrap' }}>
+                        {Object.entries(s.attributes).slice(0, 3).map(([k,v]) => <span key={k} style={{ fontSize: '0.65rem', padding: '0.1rem 0.3rem', backgroundColor: 'var(--bg-secondary)', borderRadius: '4px', border: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}>{k}: {v as string}</span>)}
+                        {Object.keys(s.attributes).length > 3 && <span style={{ fontSize: '0.65rem', padding: '0.1rem 0.3rem', color: 'var(--text-muted)' }}>+{Object.keys(s.attributes).length - 3}</span>}
+                     </div>
+                  )}
                 </TableCell>
                 <TableCell>
                   {getCategoryName(s.categoryId)}
@@ -284,8 +299,9 @@ export default function ServicesPage() {
         width="lg"
       >
         <div className={styles.formGrid}>
-          <div className={styles.fullWidth}>
-            <Input label="Nombre del Servicio" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+          <div className={styles.fullWidth} style={{ display: 'flex', gap: '1rem' }}>
+            <Input label="Marca (Obligatorio)" value={formData.brand} onChange={e => setFormData({...formData, brand: e.target.value})} required style={{ flex: 1 }} />
+            <Input label="Nombre del Servicio (Obligatorio)" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required style={{ flex: 2 }} />
           </div>
 
           <div className={styles.fullWidth} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
@@ -305,7 +321,7 @@ export default function ServicesPage() {
                  <option value="">Selecciona...</option>
                  {mainCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                </select>
-               <Button variant="outline" onClick={() => openPrompt('category')} type="button" style={{ padding: '0 0.5rem' }}>+</Button>
+               <Button variant="outline" onClick={() => openDictionary('categories')} type="button" style={{ padding: '0 0.5rem' }}>+</Button>
              </div>
           </div>
 
@@ -316,7 +332,7 @@ export default function ServicesPage() {
                  <option value="">Selecciona...</option>
                  {subCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                </select>
-               <Button variant="outline" onClick={() => openPrompt('subcategory')} type="button" disabled={!formData.categoryId} style={{ padding: '0 0.5rem' }}>+</Button>
+               <Button variant="outline" onClick={() => openDictionary('categories')} type="button" disabled={!formData.categoryId} style={{ padding: '0 0.5rem' }}>+</Button>
              </div>
           </div>
 
@@ -332,7 +348,6 @@ export default function ServicesPage() {
              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                 <label style={{ fontSize: '1rem', fontWeight: 600 }}>Modalidades / Variantes</label>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <Button variant="outline" size="sm" type="button" onClick={() => openPrompt('attribute')}>+ Tipo de Modalidad DB</Button>
                   <Button size="sm" type="button" onClick={addVariant}>+ Añadir Modalidad</Button>
                 </div>
              </div>
@@ -384,6 +399,58 @@ export default function ServicesPage() {
              )}
           </div>
 
+          {/* Dynamic Attributes Section */}
+          <div className={styles.fullWidth} style={{ marginTop: '1rem', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
+             <label style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem', display: 'block' }}>Características Adicionales (Flexible)</label>
+             <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>Añade atributos libres no obligatorios sobre el servicio.</p>
+             
+             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
+               {Object.entries(formData.attributes).map(([key, value]) => (
+                  <div key={key} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <span style={{ flex: 1, padding: '0.5rem', backgroundColor: 'var(--bg-secondary)', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 500 }}>{key}</span>
+                    <span style={{ flex: 2, padding: '0.5rem', backgroundColor: 'var(--bg-secondary)', borderRadius: '6px', fontSize: '0.85rem' }}>{value}</span>
+                    <button type="button" onClick={() => {
+                      const newAttrs = {...formData.attributes};
+                      delete newAttrs[key];
+                      setFormData({...formData, attributes: newAttrs});
+                    }} style={{ color: 'var(--error)', background: 'none', border:'none', cursor:'pointer' }}><Trash2 size={16}/></button>
+                  </div>
+               ))}
+             </div>
+
+             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
+               <div style={{ flex: 1 }}>
+                 <label style={{ fontSize: '0.75rem', fontWeight: 500, display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '2px' }}>
+                   Característica
+                   <Button variant="outline" size="sm" type="button" onClick={() => openDictionary('attributes')} style={{padding:'0 4px', height: '18px', fontSize: '10px'}}>+</Button>
+                 </label>
+                 <select value={newAttrKey} onChange={e => setNewAttrKey(e.target.value)} style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)' }}>
+                   <option value="">Seleccionar...</option>
+                   {dbAttributes.map(a => <option key={a.id} value={a.name}>{a.name}</option>)}
+                 </select>
+               </div>
+               <div style={{ flex: 2 }}>
+                 <label style={{ fontSize: '0.75rem', fontWeight: 500 }}>Valor ({dbAttributes.find(a=>a.name===newAttrKey)?.type === 'number' ? 'Numérico' : dbAttributes.find(a=>a.name===newAttrKey)?.type === 'boolean' ? 'Sí/No' : 'Texto'})</label>
+                 {dbAttributes.find(a=>a.name===newAttrKey)?.type === 'boolean' ? (
+                   <select value={newAttrValue} onChange={e => setNewAttrValue(e.target.value)} style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
+                     <option value=""></option>
+                     <option value="Sí">Sí</option>
+                     <option value="No">No</option>
+                   </select>
+                 ) : (
+                   <input type={dbAttributes.find(a=>a.name===newAttrKey)?.type === 'number' ? 'number' : 'text'} value={newAttrValue} onChange={e => setNewAttrValue(e.target.value)} placeholder="Ingresar valor..." style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--border-color)' }} />
+                 )}
+               </div>
+               <Button type="button" variant="outline" onClick={() => {
+                 if (newAttrKey.trim() && newAttrValue.trim()) {
+                   setFormData({...formData, attributes: {...formData.attributes, [newAttrKey.trim()]: newAttrValue.trim()}});
+                   setNewAttrKey('');
+                   setNewAttrValue('');
+                 }
+               }}>Añadir</Button>
+             </div>
+          </div>
+
           <div className={styles.fullWidth} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '1rem'}}>
              <label style={{ fontSize: '0.875rem', fontWeight: 500 }}>Estado Publicación</label>
              <select 
@@ -401,48 +468,14 @@ export default function ServicesPage() {
         </div>
       </Modal>
 
-      {/* Modal Nativo para Creación de Parámetros DB */}
-      <Modal isOpen={promptModal.isOpen} onClose={() => setPromptModal({...promptModal, isOpen: false})} title={promptModal.title}>
-        <form onSubmit={handlePromptSave} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <Input 
-            label={promptModal.label} 
-            value={promptValue} 
-            onChange={e => setPromptValue(e.target.value)} 
-            required autoFocus
-          />
-          <Button fullWidth type="submit">Guardar Registro</Button>
-        </form>
-      </Modal>
-
-      {/* Modal de Gestión de Diccionarios */}
-      <Modal isOpen={isDictManagerOpen} onClose={() => setIsDictManagerOpen(false)} title="Gestor de Categorías y Modalidades">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          <div>
-             <h3 style={{ fontSize: '1rem', fontWeight: 600, borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '0.5rem' }}>Categorías Principal y Sub</h3>
-             <div style={{ maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-               {categories.map(c => (
-                  <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem', backgroundColor: 'var(--bg-secondary)', borderRadius: '6px' }}>
-                    <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>{c.name} {c.parentID ? <Badge variant="outline" style={{marginLeft:'0.5rem'}}>Sub-categoría</Badge> : ''}</span>
-                    <button type="button" onClick={() => requestDeleteDict('serviceCategories', c.id)} style={{ color: 'red', background: 'none', border:'none', cursor:'pointer' }}><Trash2 size={16}/></button>
-                  </div>
-               ))}
-               {categories.length === 0 && <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)'}}>No hay categorías registradas.</p>}
-             </div>
-          </div>
-          <div>
-             <h3 style={{ fontSize: '1rem', fontWeight: 600, borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '0.5rem' }}>Tipos de Modalidad</h3>
-             <div style={{ maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-               {attributes.map(a => (
-                  <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem', backgroundColor: 'var(--bg-secondary)', borderRadius: '6px' }}>
-                    <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>{a.name}</span>
-                    <button type="button" onClick={() => requestDeleteDict('serviceAttributes', a.id)} style={{ color: 'red', background: 'none', border:'none', cursor:'pointer' }}><Trash2 size={16}/></button>
-                  </div>
-               ))}
-               {attributes.length === 0 && <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)'}}>No hay atributos registrados.</p>}
-             </div>
-          </div>
-        </div>
-      </Modal>
+      <DictionaryManager 
+        isOpen={isDictionaryOpen} 
+        onClose={() => setIsDictionaryOpen(false)} 
+        tenantID={user?.tenantID!} 
+        onDataChanged={fetchData} 
+        initialTab={dictionaryTab} 
+        entityType="service" 
+      />
 
       {/* Modal Genéico de Confirmación */}
       <Modal isOpen={confirmModal.isOpen} onClose={() => setConfirmModal({...confirmModal, isOpen: false})} title={confirmModal.title} width="sm">
@@ -457,6 +490,14 @@ export default function ServicesPage() {
           </div>
         </div>
       </Modal>
+
+      <ImportExcelModal 
+        isOpen={isImportOpen} 
+        onClose={() => setIsImportOpen(false)} 
+        onImport={handleImportExcel} 
+        entityType="service"
+        isLoading={isLoading} 
+      />
 
     </div>
   );

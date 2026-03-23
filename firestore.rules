@@ -56,6 +56,8 @@ service cloud.firestore {
     match /products/{docId} { allow read: if canReadData(); allow create, update: if canWriteData(); allow delete: if canDeleteData(); }
     match /productCategories/{docId} { allow read: if canReadData(); allow create, update: if canWriteData(); allow delete: if canDeleteData(); }
     match /productSizes/{docId} { allow read: if canReadData(); allow create, update: if canWriteData(); allow delete: if canDeleteData(); }
+    match /productColors/{docId} { allow read: if canReadData(); allow create, update: if canWriteData(); allow delete: if canDeleteData(); }
+    match /tenantAttributes/{docId} { allow read: if canReadData(); allow create, update: if canWriteData(); allow delete: if canDeleteData(); }
     
     match /services/{docId} { allow read: if canReadData(); allow create, update: if canWriteData(); allow delete: if canDeleteData(); }
     match /serviceCategories/{docId} { allow read: if canReadData(); allow create, update: if canWriteData(); allow delete: if canDeleteData(); }
