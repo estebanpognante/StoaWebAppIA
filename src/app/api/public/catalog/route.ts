@@ -11,11 +11,19 @@ export async function GET(request: Request) {
 
   try {
     const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();
-    if (!tenantDoc.exists) return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
+    if (!tenantDoc.exists) {
+      console.warn(`Tenant not found: ${tenantId}`);
+      return NextResponse.json({ error: 'Tenant not found or Invalid ID' }, { status: 404 });
+    }
 
     const tenantData = tenantDoc.data();
     if (!tenantData?.publicApiEnabled) {
       return NextResponse.json({ error: 'Public API is disabled for this tenant' }, { status: 403 });
+    }
+
+    // MANDATORY: Check if the provided API Key matches the one stored in DB
+    if (tenantData.publicApiKeyPrefix !== apiKey) {
+      return NextResponse.json({ error: 'Invalid API Key' }, { status: 401 });
     }
 
     // A real AI endpoints needs *Lively* mapped data, not just raw DB tables.
