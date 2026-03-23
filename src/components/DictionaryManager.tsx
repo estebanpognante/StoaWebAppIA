@@ -26,6 +26,7 @@ export function DictionaryManager({ isOpen, onClose, tenantID, onDataChanged, in
   const [attributes, setAttributes] = useState<any[]>([]);
   
   const [isLoading, setIsLoading] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{isOpen: boolean, title: string, message: string, onConfirm: () => void}>({isOpen: false, title: '', message: '', onConfirm: () => {}});
 
   // Form State
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -110,17 +111,23 @@ export function DictionaryManager({ isOpen, onClose, tenantID, onDataChanged, in
     setIsLoading(false);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('¿Eliminar este elemento? Podría quedar vacío en los registros que lo usaban.')) return;
-    setIsLoading(true);
-    try {
-      await deleteFromCollection(currentCollection(), id);
-      await fetchData();
-      onDataChanged();
-    } catch (e: any) {
-      alert('Error: ' + e.message);
-    }
-    setIsLoading(false);
+  const handleDelete = (id: string) => {
+    setConfirmModal({
+      isOpen: true, 
+      title: 'Eliminar Elemento', 
+      message: '¿Eliminar este elemento? Podría quedar vacío en los registros que lo usaban.',
+      onConfirm: async () => {
+        setIsLoading(true);
+        try {
+          await deleteFromCollection(currentCollection(), id);
+          await fetchData();
+          onDataChanged();
+        } catch (e: any) {
+          alert('Error: ' + e.message);
+        }
+        setIsLoading(false);
+      }
+    });
   };
 
   const editItem = (item: any) => {
@@ -133,6 +140,7 @@ export function DictionaryManager({ isOpen, onClose, tenantID, onDataChanged, in
   const mainCategories = categories.filter(c => !c.parentID);
 
   return (
+    <>
     <Modal isOpen={isOpen} onClose={onClose} title={`Gestor de Catálogos (${entityType === 'product' ? 'Productos' : 'Servicios'})`} width="lg">
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', height: '600px' }}>
         
@@ -261,6 +269,20 @@ export function DictionaryManager({ isOpen, onClose, tenantID, onDataChanged, in
         </div>
       </div>
     </Modal>
+    
+    <Modal isOpen={confirmModal.isOpen} onClose={() => setConfirmModal({...confirmModal, isOpen: false})} title={confirmModal.title} width="sm">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        <p style={{ fontSize: '0.95rem', color: 'var(--text-primary)' }}>{confirmModal.message}</p>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+          <Button variant="outline" onClick={() => setConfirmModal({...confirmModal, isOpen: false})}>Cancelar</Button>
+          <Button variant="danger" onClick={() => {
+            confirmModal.onConfirm();
+            setConfirmModal({...confirmModal, isOpen: false});
+          }}>Sí, Eliminar</Button>
+        </div>
+      </div>
+    </Modal>
+    </>
   );
 }
 
