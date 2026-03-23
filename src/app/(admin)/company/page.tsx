@@ -25,7 +25,13 @@ export default function CompanyPage() {
     whatsapp: '',
     email: '',
     website: '',
-    address: ''
+    address: '',
+    // SMTP Settings
+    smtpHost: '',
+    smtpPort: '587',
+    smtpUser: '',
+    smtpPass: '',
+    smtpFrom: ''
   });
 
   useEffect(() => {
@@ -49,7 +55,12 @@ export default function CompanyPage() {
           whatsapp: tenantDoc.whatsapp || '',
           email: tenantDoc.email || '',
           website: tenantDoc.website || '',
-          address: tenantDoc.address || ''
+          address: tenantDoc.address || '',
+          smtpHost: tenantDoc.smtpHost || '',
+          smtpPort: tenantDoc.smtpPort || '587',
+          smtpUser: tenantDoc.smtpUser || '',
+          smtpPass: tenantDoc.smtpPass || '',
+          smtpFrom: tenantDoc.smtpFrom || ''
         });
       } else {
         setDocExists(false);
@@ -126,6 +137,20 @@ export default function CompanyPage() {
             <div className={styles.fullWidth}>
               <Input label="Detalles" name="address" value={formData.address} onChange={handleChange} />
             </div>
+          </CardContent>
+
+          <CardHeader className={styles.sectionHeader}>
+            <CardTitle>Configuración de Email (SMTP)</CardTitle>
+          </CardHeader>
+          <CardContent className={styles.formGrid}>
+            <Input label="Servidor SMTP" name="smtpHost" placeholder="smtp.ejemplo.com" value={formData.smtpHost} onChange={handleChange} />
+            <Input label="Puerto" name="smtpPort" type="number" placeholder="587" value={formData.smtpPort} onChange={handleChange} />
+            <Input label="Usuario / Email SMTP" name="smtpUser" value={formData.smtpUser} onChange={handleChange} />
+            <Input label="Contraseña SMTP" name="smtpPass" type="password" value={formData.smtpPass} onChange={handleChange} />
+            <Input label="Remitente (From)" name="smtpFrom" placeholder="Stoa <no-reply@tuempresa.com>" value={formData.smtpFrom} onChange={handleChange} />
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', gridColumn: 'span 2' }}>
+              Estas credenciales se utilizarán para enviar confirmaciones de turnos y recordatorios automáticos a tus clientes.
+            </p>
           </CardContent>
 
           <CardFooter className={styles.footer}>

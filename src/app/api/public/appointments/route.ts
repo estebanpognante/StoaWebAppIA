@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
+import { sendEmail } from '@/lib/email';
 
 export async function POST(req: Request) {
   try {
@@ -13,11 +14,11 @@ export async function POST(req: Request) {
     const body = await req.json().catch(() => null);
     if (!body) return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
 
-    const { serviceId, variantId, professionalId, date, time, clientName, clientPhone } = body;
+    const { serviceId, variantId, professionalId, date, time, clientName, clientPhone, clientEmail } = body;
 
     // Validación de parámetros críticos requeridos para agendar
-    if (!serviceId || !professionalId || !date || !time || !clientName) {
-      return NextResponse.json({ error: 'Missing required fields: serviceId, professionalId, date, time, clientName' }, { status: 400 });
+    if (!serviceId || !professionalId || !date || !time || !clientName || !clientEmail) {
+      return NextResponse.json({ error: 'Missing required fields: serviceId, professionalId, date, time, clientName, clientEmail' }, { status: 400 });
     }
 
     // 1. Obtener la duración base calculándola del Servicio Real
@@ -82,6 +83,7 @@ export async function POST(req: Request) {
       professionalId,
       clientName,
       clientPhone: clientPhone || '',
+      clientEmail,
       startTime: startTimeStr,
       endTime: endTimeStr,
       duration,
@@ -90,6 +92,30 @@ export async function POST(req: Request) {
     };
 
     const docRef = await adminDb.collection('appointments').add(newAppointment);
+
+    // 5. Enviar Email de Confirmación (Async, no bloquea la respuesta)
+    const tenantData = (await adminDb.collection('tenants').doc(tenantId).get()).data();
+    const businessName = tenantData?.companyName || 'Nuestra Empresa';
+    
+    sendEmail({
+      to: clientEmail,
+      subject: `Confirmación de Turno - ${businessName}`,
+      html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px; border-radius: 10px;">
+          <h2 style="color: #4f46e5;">¡Turno Agendado con Éxito!</h2>
+          <p>Hola <strong>${clientName}</strong>,</p>
+          <p>Tu turno para el servicio <strong>${serviceData.name}</strong> ha sido confirmado.</p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+          <p><strong>Fecha:</strong> ${date}</p>
+          <p><strong>Hora:</strong> ${time} hs</p>
+          <p><strong>Lugar:</strong> ${tenantData?.address || 'Nuestra oficina'}</p>
+          <br>
+          <p style="font-size: 0.9rem; color: #666;">Te esperamos puntualmente. Si necesitas cancelar, por favor contáctanos.</p>
+          <p style="font-size: 0.8rem; color: #999;">Enviado automáticamente por Stoa desde ${businessName}</p>
+        </div>
+      `,
+      tenantId
+    }).catch(err => console.error('Delayed email error:', err));
 
     // Retorna toda la data por confirmación para la IA
     return NextResponse.json({

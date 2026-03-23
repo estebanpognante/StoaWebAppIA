@@ -42,6 +42,7 @@ export default function AppointmentsPage() {
     variantId: '',
     clientName: '',
     clientPhone: '',
+    clientEmail: '',
     date: '', // YYYY-MM-DD
     time: '', // HH:MM
     duration: 60,
@@ -114,6 +115,7 @@ export default function AppointmentsPage() {
       variantId: '',
       clientName: '',
       clientPhone: '',
+      clientEmail: '',
       date: dateString,
       time: timeString,
       duration: 60,
@@ -141,6 +143,7 @@ export default function AppointmentsPage() {
       variantId: appt.variantId || '',
       clientName: appt.clientName,
       clientPhone: appt.clientPhone || '',
+      clientEmail: appt.clientEmail || '',
       date: `${yyyy}-${mm}-${dd}`,
       time: `${HH}:${Min}`,
       duration: appt.duration || 60,
@@ -152,28 +155,43 @@ export default function AppointmentsPage() {
   const handleSaveAppt = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user?.tenantID) return;
-    
-    const startObj = new Date(`${formData.date}T${formData.time}:00`);
-    const endObj = new Date(startObj.getTime() + formData.duration * 60000);
-
-    const payload = {
-      ...formData,
-      tenantID: user.tenantID,
-      startTime: startObj.toISOString(),
-      endTime: endObj.toISOString()
-    };
+    setIsLoading(true);
 
     try {
+      // Get ID Token for secure API call
+      const { auth } = await import('@/lib/firebase/client');
+      const token = await auth.currentUser?.getIdToken();
+
       if (editingId) {
+        // En edición no mandamos mail (asumimos que ya se mandó en la creación)
+        const startObj = new Date(`${formData.date}T${formData.time}:00`);
+        const endObj = new Date(startObj.getTime() + formData.duration * 60000);
+        const payload = { ...formData, startTime: startObj.toISOString(), endTime: endObj.toISOString() };
         await updateInCollection('appointments', editingId, payload);
       } else {
-        await insertIntoCollection('appointments', payload);
+        // CREACIÓN: Usar API para gatillar el Email
+        const response = await fetch('/api/admin/appointments', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(formData)
+        });
+
+        if (!response.ok) {
+          const err = await response.json();
+          throw new Error(err.error || 'Error al agendar');
+        }
       }
+
       setIsModalOpen(false);
       fetchData(); // Reload
+      setEditingId(null);
     } catch (e: any) {
-      alert('Error guardando turno: Verifica tus reglas de Firebase. Detalle: ' + e.message);
+      alert('Error guardando turno: ' + e.message);
     }
+    setIsLoading(false);
   };
 
   const requestDeleteAppt = (id: string) => {
@@ -615,7 +633,10 @@ export default function AppointmentsPage() {
 
           <hr style={{ border: 'none', borderTop: '1px solid var(--border-color)', margin: '0.5rem 0' }} />
 
-          <Input label="Nombre del Cliente" value={formData.clientName} onChange={e => setFormData({...formData, clientName: e.target.value})} required />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <Input label="Nombre del Cliente" value={formData.clientName} onChange={e => setFormData({...formData, clientName: e.target.value})} required />
+            <Input label="Email del Cliente" type="email" value={formData.clientEmail} onChange={e => setFormData({...formData, clientEmail: e.target.value})} required />
+          </div>
           <Input label="Teléfono (Opcional)" value={formData.clientPhone} onChange={e => setFormData({...formData, clientPhone: e.target.value})} />
 
           <div style={{ display: 'flex', gap: '0.5rem' }}>
