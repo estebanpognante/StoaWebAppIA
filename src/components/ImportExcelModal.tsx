@@ -22,7 +22,7 @@ export function ImportExcelModal({ isOpen, onClose, onImport, entityType, isLoad
 
   const requiredCols = entityType === 'product' 
     ? ['marca', 'nombre', 'descripcion', 'precio', 'stock']
-    : ['marca', 'nombre', 'descripcion', 'precio'];
+    : ['nombre', 'descripcion', 'precio'];
 
   const resetState = () => {
     setParsedRows([]);
@@ -66,13 +66,13 @@ export function ImportExcelModal({ isOpen, onClose, onImport, entityType, isLoad
           } else {
             // Construir el payload de importacion
             const payload: any = {
-              brand: normRow['marca'],
               name: normRow['nombre'],
               description: normRow['descripcion'],
               price: Number(normRow['precio']),
               attributes: {}
             };
             if (entityType === 'product') {
+              payload.brand = normRow['marca'];
               payload.stock = Number(normRow['stock'] || 0);
             }
 

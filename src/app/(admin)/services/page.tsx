@@ -34,7 +34,7 @@ export default function ServicesPage() {
   // Form states
   interface ServiceVariant { id: string; name: string; description: string; attributeId: string; price: number; duration: number; }
   const [formData, setFormData] = useState({ 
-    name: '', brand: '', description: '', categoryId: '', subcategoryId: '', price: 0, duration: 60, status: 'active',
+    name: '', description: '', categoryId: '', subcategoryId: '', price: 0, duration: 60, status: 'active',
     variants: [] as ServiceVariant[],
     attributes: {} as Record<string, string>
   });
@@ -68,7 +68,6 @@ export default function ServicesPage() {
     setEditingService(service);
     setFormData({
       name: service.name || '',
-      brand: service.brand || '',
       description: service.description || '',
       categoryId: service.categoryId || '',
       subcategoryId: service.subcategoryId || '',
@@ -83,7 +82,7 @@ export default function ServicesPage() {
 
   const handleNew = () => {
     setEditingService(null);
-    setFormData({ name: '', brand: '', description: '', categoryId: '', subcategoryId: '', price: 0, duration: 60, status: 'active', variants: [], attributes: {} });
+    setFormData({ name: '', description: '', categoryId: '', subcategoryId: '', price: 0, duration: 60, status: 'active', variants: [], attributes: {} });
     setNewAttrKey('');
     setNewAttrValue('');
     setIsModalOpen(true);
@@ -228,8 +227,7 @@ export default function ServicesPage() {
             rows.push(
               <TableRow key={s.id}>
                 <TableCell className={styles.fontWeightMedium}>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--primary-color)', fontWeight: 700, textTransform: 'uppercase' }}>{s.brand || '---'}</div>
-                  <div style={{ color: hasVariants ? 'var(--text-secondary)' : 'inherit', display: 'flex', alignItems: 'center', marginTop: '2px' }}>
+                  <div style={{ color: hasVariants ? 'var(--text-secondary)' : 'inherit', display: 'flex', alignItems: 'center' }}>
                     {s.name} {hasVariants && <Badge variant="outline" style={{marginLeft: '0.5rem', fontSize: '0.65rem'}}>Agrupador</Badge>}
                   </div>
                   {s.description && <div style={{fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '4px', maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{s.description}</div>}
@@ -299,9 +297,8 @@ export default function ServicesPage() {
         width="lg"
       >
         <div className={styles.formGrid}>
-          <div className={styles.fullWidth} style={{ display: 'flex', gap: '1rem' }}>
-            <Input label="Marca (Obligatorio)" value={formData.brand} onChange={e => setFormData({...formData, brand: e.target.value})} required style={{ flex: 1 }} />
-            <Input label="Nombre del Servicio (Obligatorio)" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required style={{ flex: 2 }} />
+          <div className={styles.fullWidth}>
+            <Input label="Nombre del Servicio (Obligatorio)" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required fullWidth />
           </div>
 
           <div className={styles.fullWidth} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
