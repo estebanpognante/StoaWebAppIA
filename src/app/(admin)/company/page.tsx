@@ -31,7 +31,8 @@ export default function CompanyPage() {
     smtpPort: '587',
     smtpUser: '',
     smtpPass: '',
-    smtpFrom: ''
+    smtpFrom: '',
+    utcOffsetMinutes: 0
   });
 
   useEffect(() => {
@@ -60,7 +61,8 @@ export default function CompanyPage() {
           smtpPort: tenantDoc.smtpPort || '587',
           smtpUser: tenantDoc.smtpUser || '',
           smtpPass: tenantDoc.smtpPass || '',
-          smtpFrom: tenantDoc.smtpFrom || ''
+          smtpFrom: tenantDoc.smtpFrom || '',
+          utcOffsetMinutes: tenantDoc.utcOffsetMinutes ?? 0
         });
       } else {
         setDocExists(false);
@@ -151,6 +153,36 @@ export default function CompanyPage() {
             <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', gridColumn: 'span 2' }}>
               Estas credenciales se utilizarán para enviar confirmaciones de turnos y recordatorios automáticos a tus clientes.
             </p>
+          </CardContent>
+
+          <CardHeader className={styles.sectionHeader}>
+            <CardTitle>Zona Horaria del Negocio</CardTitle>
+          </CardHeader>
+          <CardContent className={styles.formGrid}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+              <label style={{ fontSize: '0.875rem', fontWeight: 500 }}>Diferencia con UTC (minutos)</label>
+              <select
+                name="utcOffsetMinutes"
+                value={formData.utcOffsetMinutes}
+                onChange={e => setFormData({ ...formData, utcOffsetMinutes: Number(e.target.value) })}
+                style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: 'var(--surface-color)', color: 'var(--text-primary)' }}
+              >
+                <option value={0}>UTC+0 — Reino Unido, Ghana</option>
+                <option value={-60}>UTC-1 — Azores</option>
+                <option value={-120}>UTC-2 — Fernando de Noronha</option>
+                <option value={-180}>UTC-3 — Argentina, Brasil (BRT)</option>
+                <option value={-210}>UTC-3:30 — Ste. John&apos;s</option>
+                <option value={-240}>UTC-4 — Chile, Venezuela</option>
+                <option value={-300}>UTC-5 — Colombia, Perú, EEUU Este</option>
+                <option value={-360}>UTC-6 — México, EEUU Central</option>
+                <option value={-420}>UTC-7 — EEUU Montañas</option>
+                <option value={-480}>UTC-8 — EEUU Pacífico</option>
+                <option value={60}>UTC+1 — España, Francia, Alemania</option>
+                <option value={120}>UTC+2 — Grecia, Sudáfrica</option>
+                <option value={180}>UTC+3 — Turquía, Arabia Saudita</option>
+              </select>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Usada por la IA para interpretar los horarios de turnos correctamente.</p>
+            </div>
           </CardContent>
 
           <CardFooter className={styles.footer}>

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import * as XLSX from 'xlsx';
 import { Button } from '@/components/ui/Button';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
 import { Badge } from '@/components/ui/Badge';
@@ -8,7 +9,7 @@ import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { ImportExcelModal } from '@/components/ImportExcelModal';
 import { DictionaryManager } from '@/components/DictionaryManager';
-import { Plus, Search, Edit2, Trash2, Settings, Upload } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, Settings, Upload, Download } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { getCollection, insertIntoCollection, updateInCollection, deleteFromCollection } from '@/lib/db';
 import styles from '../products/Products.module.css';
@@ -172,6 +173,24 @@ export default function ServicesPage() {
   const mainCategories = categories.filter(c => !c.parentID);
   const subCategories = formData.categoryId ? categories.filter(c => c.parentID === formData.categoryId) : [];
 
+  const exportToExcel = () => {
+    const rows = services.map(s => ({
+      nombre: s.name || '',
+      descripcion: s.description || '',
+      precio: s.price || 0,
+      duracion_minutos: s.duration || 60,
+      categoria: getCategoryName(s.categoryId),
+      subcategoria: s.subcategoryId ? getCategoryName(s.subcategoryId) : '',
+    }));
+    if (rows.length === 0) {
+      rows.push({ nombre: 'Ejemplo Servicio', descripcion: 'Descripcion', precio: 0, duracion_minutos: 60, categoria: '', subcategoria: '' });
+    }
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(rows);
+    XLSX.utils.book_append_sheet(wb, ws, 'Servicios');
+    XLSX.writeFile(wb, 'servicios_exportados.xlsx');
+  };
+
   return (
     <div className={styles.container}>
       <header className={styles.header}>
@@ -180,6 +199,10 @@ export default function ServicesPage() {
           <p className={styles.subtitle}>Gestiona tus servicios y sus modalidades</p>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
+           <Button variant="outline" onClick={exportToExcel}>
+             <Download size={18} />
+             Exportar Excel
+           </Button>
            <Button variant="outline" onClick={() => setIsImportOpen(true)}>
              <Upload size={18} />
              Importar Excel
@@ -428,7 +451,7 @@ export default function ServicesPage() {
                    Característica
                    <Button variant="outline" size="sm" type="button" onClick={() => openDictionary('attributes')} style={{padding:'0 4px', height: '18px', fontSize: '10px'}}>+</Button>
                  </label>
-                 <select value={newAttrKey} onChange={e => setNewAttrKey(e.target.value)} style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)' }}>
+                 <select value={newAttrKey} onChange={e => setNewAttrKey(e.target.value)} style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
                    <option value="">Seleccionar...</option>
                    {dbAttributes.map(a => <option key={a.id} value={a.name}>{a.name}</option>)}
                  </select>

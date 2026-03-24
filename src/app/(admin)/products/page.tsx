@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import * as XLSX from 'xlsx';
 import { Button } from '@/components/ui/Button';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
 import { Badge } from '@/components/ui/Badge';
@@ -8,7 +9,7 @@ import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { ImportExcelModal } from '@/components/ImportExcelModal';
 import { DictionaryManager } from '@/components/DictionaryManager';
-import { Plus, Search, Edit2, Trash2, Settings, Upload } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, Settings, Upload, Download } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { getCollection, insertIntoCollection, updateInCollection, deleteFromCollection } from '@/lib/db';
 import styles from './Products.module.css';
@@ -171,6 +172,26 @@ export default function ProductsPage() {
   const mainCategories = categories.filter(c => !c.parentID);
   const subCategories = formData.categoryId ? categories.filter(c => c.parentID === formData.categoryId) : [];
 
+  const exportToExcel = () => {
+    const rows = products.map(p => ({
+      marca: p.brand || '',
+      nombre: p.name || '',
+      descripcion: p.description || '',
+      precio: p.price || 0,
+      stock: p.stock || 0,
+      categoria: getCategoryName(p.categoryId),
+      subcategoria: p.subcategoryId ? getCategoryName(p.subcategoryId) : '',
+    }));
+    // If no products, export a template row
+    if (rows.length === 0) {
+      rows.push({ marca: 'Ejemplo Marca', nombre: 'Ejemplo Nombre', descripcion: 'Descripcion', precio: 0, stock: 0, categoria: '', subcategoria: '' });
+    }
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(rows);
+    XLSX.utils.book_append_sheet(wb, ws, 'Productos');
+    XLSX.writeFile(wb, 'productos_exportados.xlsx');
+  };
+
   return (
     <div className={styles.container}>
       <header className={styles.header}>
@@ -179,10 +200,14 @@ export default function ProductsPage() {
           <p className={styles.subtitle}>Gestiona tu catálogo y variantes</p>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <Button variant="outline" onClick={() => setIsImportOpen(true)}>
-            <Upload size={18} />
-            Importar Excel
-          </Button>
+           <Button variant="outline" onClick={exportToExcel}>
+             <Download size={18} />
+             Exportar Excel
+           </Button>
+           <Button variant="outline" onClick={() => setIsImportOpen(true)}>
+             <Upload size={18} />
+             Importar Excel
+           </Button>
           <Button variant="outline" onClick={() => openDictionary('categories')}>
             <Settings size={18} />
             Gestor de Catálogos
@@ -439,7 +464,7 @@ export default function ProductsPage() {
                    Característica
                    <Button variant="outline" size="sm" type="button" onClick={() => openDictionary('attributes')} style={{padding:'0 4px', height: '18px', fontSize: '10px'}}>+</Button>
                  </label>
-                 <select value={newAttrKey} onChange={e => setNewAttrKey(e.target.value)} style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)' }}>
+                 <select value={newAttrKey} onChange={e => setNewAttrKey(e.target.value)} style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
                    <option value="">Seleccionar...</option>
                    {dbAttributes.map(a => <option key={a.id} value={a.name}>{a.name}</option>)}
                  </select>

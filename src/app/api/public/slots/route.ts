@@ -18,7 +18,8 @@ export async function GET(req: Request) {
     const serviceId = searchParams.get('serviceId');
     const variantId = searchParams.get('variantId');
     const dateStr = searchParams.get('date'); // Opcional (Si es null, calcula "Próximos 3 días reales")
-    
+    const filterProfId = searchParams.get('professionalId'); // Opcional: filtrar por profesional
+
     const tenantId = req.headers.get('x-tenant-id');
     const apiKey = req.headers.get('x-api-key');
 
@@ -29,6 +30,10 @@ export async function GET(req: Request) {
     if (!serviceId) {
       return NextResponse.json({ error: 'Missing serviceId parameter' }, { status: 400 });
     }
+
+    // Read tenant timezone offset
+    const tenantDoc2 = await adminDb.collection('tenants').doc(tenantId).get();
+    const utcOffsetMinutes: number = (tenantDoc2.data()?.utcOffsetMinutes) ?? 0;
 
     // 1. Obtener la Duración del Servicio
     const serviceDoc = await adminDb.collection('services').doc(serviceId).get();
@@ -51,10 +56,15 @@ export async function GET(req: Request) {
       .get(); 
 
     const allProfs = profsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
-    const assignedProfs = allProfs.filter(p => {
+    let assignedProfs = allProfs.filter(p => {
         if (!p.services) return false;
         return p.services.includes(serviceKey) || p.services.includes(serviceId);
     });
+
+    // Si se pasa un professionalId específico, filtrar solo ese profesional
+    if (filterProfId) {
+      assignedProfs = assignedProfs.filter(p => p.id === filterProfId);
+    }
 
     if (assignedProfs.length === 0) {
       return NextResponse.json({ type: dateStr ? 'single' : 'next3', days: [] });
@@ -73,8 +83,8 @@ export async function GET(req: Request) {
         if (availableProfs.length === 0) return null;
         
         // Buscar citas de ese día para todos los profesionales
-        const startOfDay = new Date(`${localDateStr}T00:00:00`).toISOString();
-        const endOfDay = new Date(`${localDateStr}T23:59:59`).toISOString();
+        const startOfDay = new Date(new Date(`${localDateStr}T00:00:00Z`).getTime() - utcOffsetMinutes * 60000).toISOString();
+        const endOfDay = new Date(new Date(`${localDateStr}T23:59:59Z`).getTime() - utcOffsetMinutes * 60000).toISOString();
         const apptsSnapshot = await adminDb.collection('appointments')
           .where('tenantID', '==', tenantId)
           .where('status', 'in', ['scheduled', 'completed']) 
@@ -161,7 +171,8 @@ export async function GET(req: Request) {
     
     if (dateStr) {
        // A. Petición de un DÍA EXACTO
-       const targetDate = new Date(`${dateStr}T00:00:00`);
+       const naiveMidnight = new Date(`${dateStr}T00:00:00Z`);
+       const targetDate = new Date(naiveMidnight.getTime() - utcOffsetMinutes * 60000);
        if (isNaN(targetDate.getTime())) return NextResponse.json({error: 'Invalid date format'}, {status: 400});
        
        const result = await getSlotsForDate(targetDate);
