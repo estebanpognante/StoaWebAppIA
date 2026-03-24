@@ -24,7 +24,7 @@ export default function ServicesPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDictionaryOpen, setIsDictionaryOpen] = useState(false);
-  const [dictionaryTab, setDictionaryTab] = useState<'categories' | 'attributes'>('categories');
+  const [dictionaryTab, setDictionaryTab] = useState<'categories' | 'attributes' | 'modalities'>('categories');
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [editingService, setEditingService] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -92,7 +92,7 @@ export default function ServicesPage() {
     setIsModalOpen(true);
   };
 
-  const openDictionary = (tab: 'categories' | 'attributes') => {
+  const openDictionary = (tab: 'categories' | 'attributes' | 'modalities') => {
     setDictionaryTab(tab);
     setIsDictionaryOpen(true);
   };
