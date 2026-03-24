@@ -12,7 +12,7 @@ interface DictionaryManagerProps {
   onClose: () => void;
   tenantID: string;
   onDataChanged: () => void;
-  initialTab?: 'categories' | 'sizes' | 'colors' | 'attributes';
+  initialTab?: 'categories' | 'sizes' | 'colors' | 'attributes' | 'modalities';
   entityType?: 'product' | 'service';
 }
 
@@ -24,6 +24,7 @@ export function DictionaryManager({ isOpen, onClose, tenantID, onDataChanged, in
   const [sizes, setSizes] = useState<any[]>([]);
   const [colors, setColors] = useState<any[]>([]);
   const [attributes, setAttributes] = useState<any[]>([]);
+  const [modalities, setModalities] = useState<any[]>([]);
   
   const [isLoading, setIsLoading] = useState(false);
   const [confirmModal, setConfirmModal] = useState<{isOpen: boolean, title: string, message: string, onConfirm: () => void}>({isOpen: false, title: '', message: '', onConfirm: () => {}});
@@ -47,17 +48,18 @@ export function DictionaryManager({ isOpen, onClose, tenantID, onDataChanged, in
     setIsLoading(true);
     try {
       const catCol = entityType === 'product' ? 'productCategories' : 'serviceCategories';
-      const [cats, szs, cols, attrs] = await Promise.all([
+      const [cats, szs, cols, attrs, mods] = await Promise.all([
         getCollection(catCol, tenantID),
         entityType === 'product' ? getCollection('productSizes', tenantID) : Promise.resolve([]),
         entityType === 'product' ? getCollection('productColors', tenantID) : Promise.resolve([]),
-        getCollection('tenantAttributes', tenantID)
+        getCollection('tenantAttributes', tenantID),
+        entityType === 'service' ? getCollection('serviceModalities', tenantID) : Promise.resolve([]),
       ]);
       setCategories(cats);
       setSizes(szs);
       setColors(cols);
-      // Filter attributes by entityType
       setAttributes(attrs.filter((a: any) => a.entityType === entityType));
+      setModalities(mods);
     } catch (e) {
       console.error('Error fetching dictionaries', e);
     }
@@ -76,6 +78,7 @@ export function DictionaryManager({ isOpen, onClose, tenantID, onDataChanged, in
     if (activeTab === 'sizes') return 'productSizes';
     if (activeTab === 'colors') return 'productColors';
     if (activeTab === 'attributes') return 'tenantAttributes';
+    if (activeTab === 'modalities') return 'serviceModalities';
     return '';
   };
 
@@ -149,6 +152,7 @@ export function DictionaryManager({ isOpen, onClose, tenantID, onDataChanged, in
           <button type="button" style={tabStyle(activeTab === 'categories')} onClick={() => { setActiveTab('categories'); resetForm(); }}>Categorías</button>
           {entityType === 'product' && <button type="button" style={tabStyle(activeTab === 'sizes')} onClick={() => { setActiveTab('sizes'); resetForm(); }}>Talles</button>}
           {entityType === 'product' && <button type="button" style={tabStyle(activeTab === 'colors')} onClick={() => { setActiveTab('colors'); resetForm(); }}>Colores / Variantes</button>}
+          {entityType === 'service' && <button type="button" style={tabStyle(activeTab === 'modalities')} onClick={() => { setActiveTab('modalities'); resetForm(); }}>Modalidades</button>}
           <button type="button" style={tabStyle(activeTab === 'attributes')} onClick={() => { setActiveTab('attributes'); resetForm(); }}>Atributos Adicionales</button>
         </div>
 
@@ -206,11 +210,22 @@ export function DictionaryManager({ isOpen, onClose, tenantID, onDataChanged, in
                 </div>
               ))}
 
+              {!isLoading && activeTab === 'modalities' && modalities.map(m => (
+                <div key={m.id} style={listItemStyle}>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 500 }}>{m.name}</span>
+                  <div style={{ display: 'flex', gap: '0.3rem' }}>
+                    <button onClick={() => editItem(m)} style={iconBtnStyle}><Edit2 size={14}/></button>
+                    <button onClick={() => handleDelete(m.id)} style={{...iconBtnStyle, color: 'var(--error)'}}><Trash2 size={14}/></button>
+                  </div>
+                </div>
+              ))}
+
                {/* Empty states */}
                {!isLoading && (
                  (activeTab === 'categories' && categories.length === 0) ||
                  (activeTab === 'sizes' && sizes.length === 0) ||
                  (activeTab === 'colors' && colors.length === 0) ||
+                 (activeTab === 'modalities' && modalities.length === 0) ||
                  (activeTab === 'attributes' && attributes.length === 0)
                ) && <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Lista vacía.</p>}
             </div>

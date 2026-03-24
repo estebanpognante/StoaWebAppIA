@@ -17,7 +17,8 @@ export default function ServicesPage() {
   const { user } = useAuth();
   const [services, setServices] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
-  const [attributes, setAttributes] = useState<any[]>([]); // For modalities
+  const [attributes, setAttributes] = useState<any[]>([]); // For modalities attributeId
+  const [modalities, setModalities] = useState<any[]>([]); // Pre-defined modality names
   const [dbAttributes, setDbAttributes] = useState<any[]>([]); // For flexible attributes
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -48,15 +49,17 @@ export default function ServicesPage() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const [srvs, cats, attrs, flexAttrs] = await Promise.all([
+      const [srvs, cats, attrs, flexAttrs, mods] = await Promise.all([
         getCollection('services', user!.tenantID),
         getCollection('serviceCategories', user!.tenantID),
         getCollection('serviceAttributes', user!.tenantID),
-        getCollection('tenantAttributes', user!.tenantID)
+        getCollection('tenantAttributes', user!.tenantID),
+        getCollection('serviceModalities', user!.tenantID),
       ]);
       setServices(srvs);
       setCategories(cats);
       setAttributes(attrs);
+      setModalities(mods);
       setDbAttributes(flexAttrs.filter((a: any) => a.entityType === 'service'));
     } catch (e) {
       console.error(e);
@@ -345,6 +348,7 @@ export default function ServicesPage() {
              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                 <label style={{ fontSize: '1rem', fontWeight: 600 }}>Modalidades / Variantes</label>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <Button size="sm" variant="outline" type="button" onClick={() => openDictionary('modalities')}>Gestionar Modalidades</Button>
                   <Button size="sm" type="button" onClick={addVariant}>+ Añadir Modalidad</Button>
                 </div>
              </div>
@@ -366,7 +370,10 @@ export default function ServicesPage() {
                      {formData.variants.map((v) => (
                        <tr key={v.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
                          <td style={{ padding: '0.5rem' }}>
-                           <input type="text" value={v.name} onChange={e=>updateVariant(v.id,'name',e.target.value)} placeholder="Ej: Facial" style={{ width: '100%', padding: '0.4rem', borderRadius: '4px', border: '1px solid var(--border-color)' }} />
+                           <select value={v.name} onChange={e => updateVariant(v.id, 'name', e.target.value)} style={{ width: '100%', padding: '0.4rem', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
+                              <option value="">Seleccionar...</option>
+                              {modalities.map(m => (<option key={m.id} value={m.name}>{m.name}</option>))}
+                            </select>
                          </td>
                          <td style={{ padding: '0.5rem' }}>
                            <input type="text" value={v.description} onChange={e=>updateVariant(v.id,'description',e.target.value)} placeholder="Ej: Incluye cremas..." style={{ width: '100%', padding: '0.4rem', borderRadius: '4px', border: '1px solid var(--border-color)' }} />

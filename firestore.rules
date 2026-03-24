@@ -62,6 +62,7 @@ service cloud.firestore {
     match /services/{docId} { allow read: if canReadData(); allow create, update: if canWriteData(); allow delete: if canDeleteData(); }
     match /serviceCategories/{docId} { allow read: if canReadData(); allow create, update: if canWriteData(); allow delete: if canDeleteData(); }
     match /serviceAttributes/{docId} { allow read: if canReadData(); allow create, update: if canWriteData(); allow delete: if canDeleteData(); }
+    match /serviceModalities/{docId} { allow read: if canReadData(); allow create, update: if canWriteData(); allow delete: if canDeleteData(); }
     
     // ----------------------------------------------------
     // EQUIPO
